@@ -1,0 +1,296 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="http://neo4j-contrib.github.io/developer-resources/language-guides/assets/css/main.css">
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.1.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js" type="text/javascript"></script>
+    <title>Find routes</title>
+</head>
+
+<body>
+
+<div role="navigation" class="navbar navbar-default navbar-static-top">
+    <div class="container">
+        <div class="row">
+            <div class="navbar-header col-md-12">
+                <div class="navbar-brand">
+                    <div class="brand">Find the best route</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row col-md-12 panel panel-default">
+        <div style="text-align: center" class="row col-md-3">
+            <form class="navbar-form">
+                <div class="dropdown">
+                    <select class="selectpicker" id="customer-ddl" name="customer-ddl"></select>
+                </div>
+            </form>
+        </div>
+        <div style="text-align: center" class="row col-md-6"></div>
+        <div style="text-align: center" class="row col-md-3">
+            <form role="searchRoutes" class="navbar-form" id="search">
+                <button class="btn btn-default" type="submit">Find routes</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div id="searchPanel" class="row">
+        <div class="col-md-12" style="text-align: center">
+            <h3>Available routes</h3>
+        </div>
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div style="text-align: center" class="panel-heading">
+                    <div class="table-wrapper-scroll-y my-custom-scrollbar">
+                        <table id="results" class="table table-striped table-bordered table-sm tableFixHead" cellspacing="0" width="100%">
+                            <thead>
+                            <tr>
+                                <th class="th-sm">Factory</th>
+                                <th class="th-sm">Cost</th>
+                                <th class="th-sm">Client</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+
+            <div id="noDataMessage" class="alert alert-info">
+                <strong>There are not available routes</strong>
+            </div>
+
+            <div id="noParamsMessage" class="alert alert-warning">
+                <strong>Please! You should select a customer</strong>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div id="routeDetailsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <div id="searchDetailsPanel" class="row">
+                        <div class="col-md-12">
+                            <div class="panel panel-default">
+                                <div style="text-align: center" class="panel-heading" id="title"></div>
+                                <table id="details" class="table table-striped table-bordered table-sm tableFixHead" cellspacing="0" width="100%">
+                                    <thead>
+                                    <tr>
+                                        <th class="th-sm">Origin</th>
+                                        <th class="th-sm">Cost</th>
+                                        <th class="th-sm">Destination</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <style type="text/css">
+
+        .tableFixHead thead th {
+            position: sticky;
+            top: 0;
+        }
+
+        /* Just common table stuff. Really. */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            padding: 8px 16px;
+            text-align: center;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            padding-top: 100px; /* Location of the box */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0, 0, 0); /* Fallback color */
+            background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaaaaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+    </style>
+
+    <script type="text/javascript">
+
+        $(function () {
+
+            // init
+            $("#search").submit(searchRoutes);
+            $("#searchPanel").hide();
+            $("#searchDetailsPanel").hide();
+            $("#noDataMessage").hide();
+            $("#noParamsMessage").hide();
+            $("#title").text("");
+            $("table#details tbody").empty();
+
+            // fill customer selection
+            var customer = [
+                {
+                    "name": "LEE",
+                    "id": "3"
+                },
+                {
+                    "name": "ANNIE",
+                    "id": "2"
+                },
+                {
+                    "name": "GASTÓN",
+                    "id": "8"
+                },
+                {
+                    "name": "MASHA",
+                    "id": "9"
+                },
+                {
+                    "name": "MARK",
+                    "id": "1"
+                },
+                {
+                    "name": "MENDOZA",
+                    "id": "4"
+                },
+                {
+                    "name": "JESÚS",
+                    "id": "6"
+                },
+                {
+                    "name": "OLIVER",
+                    "id": "5"
+                },
+                {
+                    "name": "ANGE",
+                    "id": "7"
+                },
+            ];
+
+            $('#customer-ddl').empty();
+            $('#customer-ddl').append('<option selected="true" disabled>Choose Customer</option>');
+            customer.forEach(function (item) {
+                $('#customer-ddl').append($('<option></option>').attr('value', item.id).text(item.name));
+            });
+
+            $('.close').click(function () {
+                $('#routeDetailsModal').hide();
+            });
+
+            function showRoute(data) {
+                if (!data) return;
+                $('#routeDetailsModal').show()
+                var route = data;
+                $("#title").text("ROUTE:  " + route.factory + " - " + route.customer);
+                var routeDatailsTable = $("table#details tbody").empty();
+                data.paths.forEach(function (path) {
+                    routeDatailsTable.append($("<tr><td>" + path.origin + "</td><td>" + path.cost + "</td><td>" + path.destination + "</td></tr>"));
+                });
+                $("#searchDetailsPanel").show();
+            }
+
+            function searchRoutes() {
+
+                // reset
+                $("#searchPanel").hide();
+                $("#searchDetailsPanel").hide();
+                $("#noDataMessage").hide();
+                $("#noParamsMessage").hide();
+                $("#title").text("");
+                $("table#details tbody").empty();
+
+                // Neo4J call
+                var selectedCustomer = $('#customer-ddl').val();
+                if (selectedCustomer) {
+                    var endpoint = "/routes?customer=" + encodeURIComponent(selectedCustomer);
+                    $.get(endpoint, function (data) {
+                        var routeTable = $("table#results tbody").empty();
+                        if (!data) return;
+
+                        if (data.length == 0) {
+                            $("#searchPanel").hide();
+                            $("#noDataMessage").show();
+                        } else {
+                            $("#searchPanel").show();
+                            $("#noDataMessage").hide();
+                        }
+
+                        data.forEach(function (route) {
+                            $("<tr><td>" + route.factory + "</td><td>" + route.cost + "</td><td>" + route.customer + "</td></tr>")
+                                .appendTo(routeTable)
+                                .click(function () {
+                                    showRoute(route);
+                                })
+                        });
+                    }, "json");
+
+                } else {
+                    $("#noParamsMessage").show();
+                }
+
+                return false;
+
+            }
+
+        })
+    </script>
+
+</body>
+</html>
